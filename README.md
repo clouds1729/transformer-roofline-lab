@@ -15,7 +15,6 @@ The project estimates:
 
 It then generates clean terminal tables, CSV outputs, and roofline plots for transformer-like workloads across illustrative hardware profiles.
 
-> **Note:** The included hardware profiles are illustrative only. They are not Qualcomm, NVIDIA, AMD, Apple, or any other vendor’s official specifications.
 
 ---
 
