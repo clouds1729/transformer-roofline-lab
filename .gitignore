@@ -104,6 +104,8 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.demo-venv/
+results/.matplotlib/
 env/
 venv/
 ENV/

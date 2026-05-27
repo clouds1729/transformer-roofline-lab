@@ -1,6 +1,56 @@
 # FRAME: <ins>F</ins>ast <ins>R</ins>oofline <ins>A</ins>nalytical <ins>M</ins>odeling and <ins>E</ins>stimation
 This is a roofline cost model for DNN accelerators. We support CNNs, MLPs, and Transformers workload.
 
+## Transformer Roofline Lab
+
+This fork-friendly version adds a lightweight educational demo for transformer
+roofline analysis. It includes illustrative transformer workloads, generic
+hardware profiles, CSV result generation, matplotlib roofline plots, and pytest
+coverage while preserving the original FRAME modeling code under `src/`.
+
+The included hardware profiles are illustrative only. They are not vendor
+specifications and should not be treated as Qualcomm or other product claims.
+
+## Quickstart
+
+```bash
+git clone https://github.com/maestro-project/frame.git
+cd frame
+python -m venv .venv
+source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python scripts/run_transformer_roofline.py
+python scripts/plot_roofline.py
+python -m pytest
+```
+
+The analysis writes `results/transformer_roofline_results.csv`, and the plotting
+script writes `results/plots/transformer_roofline.png`.
+
+To run the full demo in one step on macOS/Linux/WSL:
+
+```bash
+bash scripts/reproduce_demo.sh
+```
+
+## Transformer Workloads And Profiles
+
+Example workloads live in `examples/transformer_workloads.py`:
+
+- `tiny_transformer`
+- `bert_base_like`
+- `gpt2_small_like`
+
+Illustrative hardware profiles live in `src/hardware_profiles.py`:
+
+- `generic_mobile_npu`
+- `generic_desktop_gpu`
+- `generic_edge_accelerator`
+
+For an educational walkthrough of the math and plots, see
+`docs/transformer_roofline_tutorial.md`.
+
 # What it does
 * Given DNN accelerator system information (using the `System` class in `src/system.py`), where you can specify PE array shape (mxu_shape), on-chip BWs, off-chip BWs, etcs.
 * Given DNN workload (e.g., `model='vgg16'`)
@@ -85,5 +135,4 @@ The parameters of ``analyze_model``are described as follows.
   year = {2022}
 }
 ```
-
 

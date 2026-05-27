@@ -1,0 +1,2 @@
+"""Example workloads for FRAME."""
+
