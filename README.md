@@ -1,138 +1,344 @@
-# FRAME: <ins>F</ins>ast <ins>R</ins>oofline <ins>A</ins>nalytical <ins>M</ins>odeling and <ins>E</ins>stimation
-This is a roofline cost model for DNN accelerators. We support CNNs, MLPs, and Transformers workload.
+# Transformer Roofline Lab
 
-## Transformer Roofline Lab
+**A lightweight Python lab for modeling compute and memory bottlenecks in transformer workloads.**
 
-This fork-friendly version adds a lightweight educational demo for transformer
-roofline analysis. It includes illustrative transformer workloads, generic
-hardware profiles, CSV result generation, matplotlib roofline plots, and pytest
-coverage while preserving the original FRAME modeling code under `src/`.
+Transformer Roofline Lab extends the original **FRAME — Fast Roofline Analytical Modeling and Estimation** project into a focused, reproducible educational tool for understanding how transformer workloads interact with accelerator-style hardware limits.
 
-The included hardware profiles are illustrative only. They are not vendor
-specifications and should not be treated as Qualcomm or other product claims.
+The project estimates:
+
+- total FLOPs
+- memory traffic
+- arithmetic intensity
+- achievable roofline performance
+- estimated latency
+- whether a workload is **compute-bound** or **memory-bound**
+
+It then generates clean terminal tables, CSV outputs, and roofline plots for transformer-like workloads across illustrative hardware profiles.
+
+> **Note:** The included hardware profiles are illustrative only. They are not Qualcomm, NVIDIA, AMD, Apple, or any other vendor’s official specifications.
+
+---
+
+## Demo
+
+![Transformer Roofline Plot](results/plots/transformer_roofline.png)
+
+The roofline plot shows where each transformer workload sits relative to a hardware profile’s memory-bandwidth slope and peak-compute ceiling.
+
+Workloads to the left of the ridge point are typically **memory-bound**.  
+Workloads to the right of the ridge point are typically **compute-bound**.
+
+---
+
+## Why this matters
+
+Modern AI performance is not only about model size or raw FLOPs.
+
+A transformer workload may be slow because:
+
+1. the chip cannot do enough math fast enough, or
+2. the chip spends too much time moving data from memory.
+
+Roofline modeling gives a simple way to reason about this tradeoff.
+
+```text
+arithmetic intensity = FLOPs / bytes moved
+````
+
+High arithmetic intensity means the workload does a lot of math per byte loaded.
+Low arithmetic intensity means the workload is more likely to be limited by memory bandwidth.
+
+This is especially relevant for:
+
+* edge AI inference
+* mobile NPUs
+* transformer acceleration
+* hardware-aware ML optimization
+* performance modeling
+* accelerator design intuition
+
+---
+
+## What this project does
+
+Transformer Roofline Lab provides a small, reproducible workflow:
+
+```text
+transformer workload config
+        ↓
+FLOP and memory estimation
+        ↓
+arithmetic intensity calculation
+        ↓
+roofline performance estimate
+        ↓
+compute-bound / memory-bound classification
+        ↓
+CSV + plot + benchmark summary
+```
+
+Example output:
+
+```text
+workload             hardware                       TFLOPs   GB moved    AI FLOP/B   achv TFLOP/s     lat ms bound
+-----------------------------------------------------------------------------------------------------------------------
+tiny_transformer     generic_mobile_npu               0.00       0.01        81.17           5.52       0.16 memory-bound
+bert_base_like       generic_mobile_npu               0.10       0.44       217.87           8.00      12.08 compute-bound
+gpt2_small_like      generic_mobile_npu               0.21       1.02       208.59           8.00      26.58 compute-bound
+```
+
+---
+
+## Included transformer workloads
+
+Example workloads live in:
+
+```text
+examples/transformer_workloads.py
+```
+
+Current examples:
+
+* `tiny_transformer`
+* `bert_base_like`
+* `gpt2_small_like`
+
+Each workload specifies transformer-style parameters such as:
+
+* batch size
+* sequence length
+* hidden dimension
+* number of layers
+* number of attention heads
+* MLP expansion ratio
+* datatype size
+
+---
+
+## Included hardware profiles
+
+Illustrative hardware profiles live in:
+
+```text
+src/hardware_profiles.py
+```
+
+Current profiles:
+
+* `generic_mobile_npu`
+* `generic_desktop_gpu`
+* `generic_edge_accelerator`
+
+Each profile contains:
+
+* peak compute throughput
+* memory bandwidth
+* short descriptive notes
+
+These profiles are meant for educational comparison, not product benchmarking.
+
+---
 
 ## Quickstart
 
+### macOS / Linux / WSL
+
 ```bash
-git clone https://github.com/maestro-project/frame.git
-cd frame
-python -m venv .venv
-source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
+git clone https://github.com/clouds1729/transformer-roofline-lab.git
+cd transformer-roofline-lab
+
+python3 -m venv .venv
+source .venv/bin/activate
+
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
+
 python scripts/run_transformer_roofline.py
 python scripts/plot_roofline.py
 python -m pytest
 ```
 
-The analysis writes `results/transformer_roofline_results.csv`, and the plotting
-script writes `results/plots/transformer_roofline.png`.
+### Windows PowerShell
 
-To run the full demo in one step on macOS/Linux/WSL:
+```powershell
+git clone https://github.com/clouds1729/transformer-roofline-lab.git
+cd transformer-roofline-lab
+
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+
+.\.venv\Scripts\python.exe scripts\run_transformer_roofline.py
+.\.venv\Scripts\python.exe scripts\plot_roofline.py
+.\.venv\Scripts\python.exe -m pytest
+```
+
+### One-command demo on macOS / Linux / WSL
 
 ```bash
 bash scripts/reproduce_demo.sh
 ```
 
-## Transformer Workloads And Profiles
+---
 
-Example workloads live in `examples/transformer_workloads.py`:
+## Generated outputs
 
-- `tiny_transformer`
-- `bert_base_like`
-- `gpt2_small_like`
+Running the demo creates:
 
-Illustrative hardware profiles live in `src/hardware_profiles.py`:
-
-- `generic_mobile_npu`
-- `generic_desktop_gpu`
-- `generic_edge_accelerator`
-
-For an educational walkthrough of the math and plots, see
-`docs/transformer_roofline_tutorial.md`.
-
-# What it does
-* Given DNN accelerator system information (using the `System` class in `src/system.py`), where you can specify PE array shape (mxu_shape), on-chip BWs, off-chip BWs, etcs.
-* Given DNN workload (e.g., `model='vgg16'`)
-
-``FRAME`` generate a table of layer-wise latency and memory usage information as well as a roofline figure, as shown in the following
-
-![img.png](images/img.png)
-![img_1.png](images/img_1.png)
-
-
-# How to use it
-
-### Interactive Design Space Exploration
-You are welcome to play with it by [``notebook/dnn_accel_playground.ipynb``](notebook/dnn_accel_playground.ipynb).
-
-We also provide a colab version for quick trial [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/maestro-project/frame/blob/master/notebook/dnn_accel_playground-run-on-colab.ipynb)
-### How to plug into you experiments
-Use the ``analyze_model``. 
-```python
-model_df, _ = analyze_model()
+```text
+results/transformer_roofline_results.csv
+results/plots/transformer_roofline.png
 ```
-``model_df`` contains a layer-by-layer analysis results.
-The parameters of ``analyze_model``are described as follows.
 
+If enabled by the current script version, it may also generate:
 
-# Parameters
-## Algorithmic Parameters
-### Basic Parameters
-* use_attn_model: Set to True if you want to use the pre-defined attention-based language model configuration that we provide.
-* head, hidden_size, ff_hidden_size: If ``use_attn_model`` == False, these variable will be ignored. ``head``:number of head. ``hidden_size``: hidden_size of key/query/value projection. ``ff_hidden_size``: hiddden_size of the feedforward layers 
-* custom_model: If you don't want to use the pre-defined bert model
-  1. Set ``use_attn_model`` to False 
-    2. Set ``custom_model`` to ``custom``
-   3.  Create a ``custom.csv`` model configuration in ``data/model``. You can use ``data/model/alexnet.csv`` as an template.
-* batch_size: Batch size
-### Sparsity-specific Parameters
-* custom_sparsity: Set to False if
-    1. you would not like to explore sparsity or 
-    2. if you would like to explore uniform sparsity on all the layers, i.e., all the layers have density defined by the following three parameters ``density_input``, ``density_weight``, ``density_output``.
-    * if you set ``custom_sparsty`` to False, you can specify you customized layer-by-layer sparsity in ``data/sparsity/custom.csv`` (assuming you model is named ``custom``)
+```text
+results/benchmark_summary.md
+```
 
-* density_input: Density of input tensor. Set to 1.0 if considering dense.
-* density_weight: Density of weight tensor. Set to 1.0 if considering dense.
-* density_output: Density of output tensor. Set to 1.0 if considering dense.
-* compress_mem: Set to True, if you want to model the fact of memory saving when model has sparsity. If set to False, then it would model the fact that model is saved in un-compressed format.
-* skip_compute: Set to True, if you want to model the fact of compute saving (by skipping 0 multiplication) when model has sparsity. If set to False, then it would model the fact that all the 0-multiplications are executed.
-* skip_compute_on_noopt_output: Set to True, if you want to model a more clever control which skip to computation when knowing the output is going to be ignored anyway. This would be effective when we are sparsifying the operation with masking the output. That is if we know the output is going to be masked anyway, we skip the computation.
-### Attention model -specific Parameter
-* attn_method: The attention method. You can choose from ``vanilla``, ``sparse`` (sparse transformer-like), ``lowrank`` (Linformer-like), ``kernel`` (Performer-like).
-* low_rank_ratio: The low rank projection ratio, if you pick ``lowrank`` method.
-* spattn_density: Sparse attention density, if you pick ``sparse`` method.
-* m_ratio: The kernel approximation projection ratio, if you pick ``kernel`` method.
-* seq_len: Sequence length.
-## System Parameters
-* onchip_mem_bw: On-chip memory bandwidth (GB/s)
-* offchip_mem_bw: Off-chip memory bandwidth (GB/s)
-* flops: The compute capacity. Number of floating point operation per seconds. (TFLOPs/s)
-* frequency: The frequency of the system. (MHz/s)
-* bits: The bits per elements: Can choose from ``int8``,``bg16``, ``f32``
-* compute_efficiency: The efficiency of the compute unit. Default as 1.0.
-* memory_efficiency: The efficiency of the memory accesss. Default as 1.0.
-* use_flops: Set to True, if you want to use ``flops`` to indicate the compute capacity. Then this will consider the ideal case. If you want to explore the impact of the shape of the PE (processing elements) array, then set ``use_flops`` to False and specfiy the PE array shape by the following parameters.
-* mxu_height: Height of PE array.
-* mxu_width: Width of PE array.
-* mxu_instance: Number of PE arrays.
-    * These three parameters will creste ``mxu_instance`` of PE arrays. Each PE array has``mxu_height`` x ``mxu_width`` PEs. 
-  
-------
-### Contributors
+The CSV contains one row per workload/hardware-profile pair.
+
+The plot visualizes each workload against the roofline curve for each hardware profile.
+
+---
+
+## How to interpret the plot
+
+A roofline plot has two main regions:
+
+```text
+memory-bound region     compute-bound region
+        /---------------------------
+       /
+      /
+```
+
+The sloped line is the memory-bandwidth limit.
+
+The flat line is the peak-compute limit.
+
+The ridge point is where the bottleneck changes.
+
+```text
+left of ridge point  -> memory-bound
+right of ridge point -> compute-bound
+```
+
+In this demo:
+
+* `tiny_transformer` is often memory-bound because it does not do enough computation per byte moved.
+* `bert_base_like` and `gpt2_small_like` are often compute-bound because their matrix multiplications create higher arithmetic intensity.
+
+---
+
+## Project structure
+
+```text
+.
+├── docs/
+│   └── transformer_roofline_tutorial.md
+├── examples/
+│   └── transformer_workloads.py
+├── results/
+│   ├── transformer_roofline_results.csv
+│   └── plots/
+│       └── transformer_roofline.png
+├── scripts/
+│   ├── run_transformer_roofline.py
+│   ├── plot_roofline.py
+│   └── reproduce_demo.sh
+├── src/
+│   ├── hardware_profiles.py
+│   ├── transformer_roofline.py
+│   └── ...
+├── tests/
+│   └── test_transformer_roofline.py
+├── requirements.txt
+├── pyproject.toml
+└── README.md
+```
+
+---
+
+## Tests
+
+Run:
+
+```bash
+python -m pytest
+```
+
+Current tests cover:
+
+* FLOP and memory sanity checks
+* arithmetic intensity calculation
+* roofline bound classification
+* workload validity
+* output behavior
+
+---
+
+## Educational tutorial
+
+For a walkthrough of the core concepts, see:
+
+```text
+docs/transformer_roofline_tutorial.md
+```
+
+The tutorial explains:
+
+* peak compute
+* memory bandwidth
+* arithmetic intensity
+* roofline models
+* compute-bound vs memory-bound workloads
+* why transformers stress both compute and memory
+* limitations of this simplified model
+
+---
+
+## Limitations
+
+This is a lightweight analytical model, not a production hardware simulator.
+
+It does **not** model:
+
+* cache behavior in detail
+* kernel fusion
+* compiler scheduling
+* runtime overhead
+* KV-cache effects
+* tensor layout choices
+* exact vendor hardware
+* power or thermal constraints
+* cycle-level execution
+
+The goal is to provide an intuitive, reproducible roofline analysis workflow for transformer workloads.
+
+---
+
+## Original FRAME attribution
+
+This project builds on the original FRAME project:
+
+**FRAME: Fast Roofline Analytical Modeling and Estimation**
+
+Original contributors:
+
 * Sheng-Chun (Felix) Kao
-* Suvinay Subramanian 
+* Suvinay Subramanian
 * Abhimanyu Bambhaniya
 * Tushar Krishna
 
-### Citation
-```
+Original citation:
+
+```bibtex
 @software{frame,
-  author = {Kao, Sheng-Chun and Subramanian, Suvinay and Bambhaniya, Abhimanyu and Krishna, Tushar},
+  author = {Kao, Sheng-Chun and Subramanian, Suvinay and Bambhaniya, Abhimanyu and Krishna},
   title = {{FRAME: Fast Roofline Analytical Modeling and Estimation}},
   url = {https://github.com/maestro-project/frame},
   version = {1.0.0},
   year = {2022}
 }
-```
 
